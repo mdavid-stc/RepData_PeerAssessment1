@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+
+
+<title>Reproducible Research: Peer Assessment 1</title>
+
+<script src="PA1_template_files/jquery-1.11.0/jquery.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="PA1_template_files/bootstrap-2.3.2/css/bootstrap.min.css" rel="stylesheet" />
+<link href="PA1_template_files/bootstrap-2.3.2/css/bootstrap-responsive.min.css" rel="stylesheet" />
+<script src="PA1_template_files/bootstrap-2.3.2/js/bootstrap.min.js"></script>
+
+<style type="text/css">code{white-space: pre;}</style>
+<link rel="stylesheet"
+      href="PA1_template_files/highlight/default.css"
+      type="text/css" />
+<script src="PA1_template_files/highlight/highlight.js"></script>
+<style type="text/css">
+  pre:not([class]) {
+    background-color: white;
+  }
+</style>
+<script type="text/javascript">
+if (window.hljs && document.readyState && document.readyState === "complete") {
+   window.setTimeout(function() {
+      hljs.initHighlighting();
+   }, 0);
+}
+</script>
+
+
+
+</head>
+
+<body>
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+</style>
+<div class="container-fluid main-container">
+
+
+<div id="header">
+<h1 class="title">Reproducible Research: Peer Assessment 1</h1>
+</div>
+
+
+<div id="loading-and-preprocessing-the-data" class="section level2">
+<h2>Loading and preprocessing the data</h2>
+<p>The data is assumed to be in a zip file in the same directory as this document. If it is not, download it. Unzip it and read it into a data frame.</p>
+<pre class="r"><code>knitr::opts_chunk$set(fig.path=&#39;figure/&#39;)
+options(scipen = 1, digits = 2)
+
+# Check for the presence of the data, possibly zipped.
+fileUrl &lt;- &quot;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip&quot;
+zipfn &lt;- &quot;activity.zip&quot;
+csvfn &lt;- &quot;activity.csv&quot;
+
+# Make sure the data is available in the current directory.
+if (!file.exists(csvfn)) {
+    if (!file.exists(zipfn)) {
+        # Download the data file
+        download.file(fileUrl, zipfn, &quot;curl&quot;)
+    }
+    # Unzip the data file
+    unzip(zipfn)
+}
+
+data &lt;- read.csv(csvfn)</code></pre>
+</div>
+<div id="what-is-mean-total-number-of-steps-taken-per-day" class="section level2">
+<h2>What is mean total number of steps taken per day?</h2>
+<p>Ignoring missing (NA) values, the number of steps taken per day is shown here:</p>
+<pre class="r"><code>#cleanData &lt;- subset(data, steps!=&quot;NA&quot;)
+cleanData &lt;- na.omit(data)
+output1 &lt;- aggregate(cleanData$steps, by = list(Date=cleanData$date), FUN=sum, simplify = TRUE)
+
+library(ggplot2)
+ticks &lt;- c(&quot;2012-10-09&quot;,&quot;2012-10-16&quot;,&quot;2012-10-23&quot;,&quot;2012-10-30&quot;,&quot;2012-11-08&quot;,&quot;2012-11-18&quot;,&quot;2012-11-25&quot;)
+ggplot(output1, aes(Date, x)) +
+    geom_bar(stat=&quot;identity&quot;) +
+    labs(title=&quot;Steps per Day&quot;) +
+    ylab(&quot;Total Steps&quot;) +
+    scale_x_discrete(breaks=ticks)</code></pre>
+<p><img src="figure/unnamed-chunk-2-1.png" /></p>
+<pre class="r"><code>avgSteps &lt;- mean(output1$x)
+medSteps &lt;- median(output1$x)</code></pre>
+<p><strong>The average number of steps per day is 10766.19.</strong><br />The median number of steps per day is 10765.</p>
+</div>
+<div id="what-is-the-average-daily-activity-pattern" class="section level2">
+<h2>What is the average daily activity pattern?</h2>
+<p>Throughout the day the average number of steps varies as in this plot:</p>
+<pre class="r"><code>output2 &lt;- aggregate(cleanData$steps, by = list(Time=cleanData$interval), FUN=mean, simplify = TRUE)
+
+plot(output2$Time, output2$x, main=&quot;Average Steps throughout the Day&quot;, xlab=&quot;Time&quot;, ylab=&quot;Average Steps&quot;, type=&quot;l&quot;)</code></pre>
+<p><img src="figure/unnamed-chunk-3-1.png" /></p>
+<pre class="r"><code>maxInterval &lt;- output2[which.max(output2$x),&quot;Time&quot;]</code></pre>
+<p><strong>The time interval with the greatest number of steps (on average over all days) is 835.</strong></p>
+</div>
+<div id="imputing-missing-values" class="section level2">
+<h2>Imputing missing values</h2>
+<pre class="r"><code>miss &lt;- sum(is.na(data$steps))</code></pre>
+<p>The number of missing values in the data set is 2304.<br />We will fill the missing values by using the average value for that time of day from the rest of the data set.</p>
+<pre class="r"><code>imputed &lt;- data
+imputed$steps[is.na(imputed$steps)] &lt;- round(output2$x)
+
+output3 &lt;- aggregate(imputed$steps, by = list(Date=imputed$date), FUN=sum, simplify = TRUE)
+ticks3 &lt;- c(&quot;2012-10-07&quot;,&quot;2012-10-14&quot;,&quot;2012-10-21&quot;,&quot;2012-10-28&quot;,&quot;2012-11-04&quot;,&quot;2012-11-11&quot;,&quot;2012-11-18&quot;,&quot;2012-11-25&quot;)
+ggplot(output3, aes(Date, x)) +
+    geom_bar(stat=&quot;identity&quot;) +
+    labs(title=&quot;Steps per Day&quot;) +
+    ylab(&quot;Total Steps&quot;) +
+    scale_x_discrete(breaks=ticks3)</code></pre>
+<p><img src="figure/unnamed-chunk-5-1.png" /></p>
+<pre class="r"><code>avgSteps3 &lt;- mean(output3$x)
+medSteps3 &lt;- median(output3$x)</code></pre>
+<p><strong>The average number of steps per day is 10765.64.</strong><br />The median number of steps per day is 10762.</p>
+<p>These values are slightly, but not significantly, lower than those calculated by skipping the missing data, so this method of imputing missing data seems like a good choice.</p>
+</div>
+<div id="are-there-differences-in-activity-patterns-between-weekdays-and-weekends" class="section level2">
+<h2>Are there differences in activity patterns between weekdays and weekends?</h2>
+<p>In the following graph, we separate the steps by whether they occur on a weekday or a weekend.</p>
+<pre class="r"><code># Turn the date into a weekday/weekend factor
+imputed$day &lt;- as.factor(weekdays(as.Date(imputed$date),TRUE))
+imputed$wkend &lt;- as.factor(ifelse(grepl(&#39;^S&#39;, imputed$day),&quot;weekend&quot;, &quot;weekday&quot;))
+
+output4 &lt;- aggregate(imputed$steps, by = list(Time=imputed$interval,Weekend=imputed$wkend), FUN=mean, simplify = TRUE)
+
+library(lattice)
+xyplot(x~Time|Weekend, data=output4, layout=c(1,2), type=&quot;l&quot;, ylab=&quot;Number of steps&quot;, xlab=&quot;Interval&quot;)</code></pre>
+<p><img src="figure/unnamed-chunk-6-1.png" /></p>
+<p>We can see that there are a number of differences:</p>
+<ul>
+<li>The peak is around 8 AM on weekdays.</li>
+<li>Activity starts earlier on weekdays.</li>
+<li>Activity ends later on weekends.</li>
+<li>Activity is generally higher througout the day on weekends.</li>
+</ul>
+</div>
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+$(document).ready(function () {
+  $('tr.header').parent('thead').parent('table').addClass('table table-condensed');
+});
+
+</script>
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>
